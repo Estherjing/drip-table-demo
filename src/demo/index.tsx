@@ -7,6 +7,7 @@ import 'antd/dist/antd.min.css';
 import 'drip-table/dist/index.css';
 import './index.css';
 
+
 import { CloudSyncOutlined } from '@ant-design/icons';
 import { Button, message } from 'antd';
 import DripTable, { DripTableFilters, DripTableInstance } from 'drip-table';
@@ -86,6 +87,8 @@ const Demo = () => {
     }
   }
 
+  console.log(state.dataSource, state.schema, 'schema')
+
   return (
     <div className="demo-wrapper">
       <DripTable<SampleRecordType, {
@@ -100,23 +103,35 @@ const Demo = () => {
         total={state.totalNum}
         dataSource={state.dataSource}
         components={{ custom: CustomComponents }}
-        slots={{
+        slots={React.useMemo(() => ({
           'select-all': (props) => (
             <Button className={props.className} style={{ marginRight: '5px' }} type="primary" onClick={selectAllRecord}>
               { state.allSelected && '取消' }
               全选
             </Button>
           ),
-        }}
-        subtableTitle={(record, index, parent, subtable) => <div style={{ textAlign: 'center' }}>{ `“表格(id:${parent.id})”行“${record.name}”的子表 （${subtable.dataSource.length} 条）` }</div>}
-        subtableFooter={(record, index, parent, subtable) => (
-          subtable.id === 'sample-table-sub-level-1'
+          'header-slot-sample': React.memo((props) => {
+            const [state, setState] = React.useState({ count: 0 });
+            return (
+              <div className={props.className} style={{ border: '1px solid #1890ff', borderRadius: '3px' }}>
+                <Button type="primary" onClick={() => setState(st => ({ count: st.count + 1 }))}>Header Slot Sample</Button>
+                <span style={{ padding: '0 8px', color: '#1890ff' }}>{ `Count: ${state.count}` }</span>
+              </div>
+            );
+          }),
+          default: props => <div>{ `未知插槽类型：${props.slotType}` }</div>,
+        }), [])}
+        subtableTitle={React.useMemo(() => (record, index, tableInfo) => (
+          <div style={{ textAlign: 'center' }}>{ `“表格(id:${tableInfo?.parent?.schema.id})”行“${tableInfo?.record?.name}”的子表 （${tableInfo.dataSource.length} 条）` }</div>
+        ), [])}
+        subtableFooter={React.useMemo(() => (record, index, tableInfo) => (
+          tableInfo.schema.id === 'sample-table-sub-level-1'
             ? (
               <div
                 style={{ cursor: 'pointer', textAlign: 'center', userSelect: 'none' }}
                 onClick={() => {
-                  message.info(`加载更多“表格(id:${parent.id})”行“${record.name}”(${index})的子表数据，已有 ${subtable.dataSource.length} 条`);
-                  console.log('expandable-footer-click', record, index, parent, subtable);
+                  message.info(`加载更多“表格(id:${tableInfo?.parent?.schema.id})”行“${record.name}”(${index})的子表数据，已有 ${tableInfo.dataSource.length} 条`);
+                  console.log('expandable-footer-click', record, index, tableInfo);
                 }}
               >
                 <CloudSyncOutlined />
@@ -124,9 +139,9 @@ const Demo = () => {
               </div>
             )
             : void 0
-        )}
-        rowExpandable={(record, parent) => parent.id === 'sample-table' && record.id === 5}
-        expandedRowRender={(record, index, parent) => (<div style={{ textAlign: 'center', margin: '20px 0' }}>{ `“表格(id:${parent.id})”行“${record.name}”的展开自定义渲染` }</div>)}
+        ), [])}
+        rowExpandable={(record, parent) => parent.schema.id === 'sample-table' && record.id === 5}
+        expandedRowRender={(record, index, parent) => (<div style={{ textAlign: 'center', margin: '20px 0' }}>{ `“表格(id:${parent.schema.id})”行“${record.name}”的展开自定义渲染` }</div>)}
         onEvent={(event, record, index) => {
           if (event.type === 'drip-link-click') {
             const name = event.payload;
